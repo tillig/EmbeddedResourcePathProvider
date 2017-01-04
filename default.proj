@@ -1,0 +1,49 @@
+﻿<Project DefaultTargets="Clean;Compile;Package" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+	<!-- Need the MSBuild community tasks for the Zip task. -->
+	<Import Project="$(MSBuildExtensionsPath)\MSBuildCommunityTasks\MSBuild.Community.Tasks.Targets"/>
+	<PropertyGroup>
+		<!-- Location of the packages once built -->
+		<PackageOutputFolder>..\build</PackageOutputFolder>
+	</PropertyGroup>
+	<ItemGroup>
+		<!-- Projects to build directly with MSBuild -->
+		<ProjectReferences Include="EmbeddedResourcePathProvider\EmbeddedResourcePathProvider.csproj" />
+		<ProjectReferences Include="Demo\Demo.csproj" />
+
+		<!-- List of folders that need to be deleted on clean. -->
+		<!-- MSBuild doesn't seem to let me wildcard match folder names - WEAK. -->
+		<CleanFolders Include="EmbeddedResourcePathProvider\bin" />
+		<CleanFolders Include="EmbeddedResourcePathProvider\obj" />
+		<CleanFolders Include="Demo\bin" />
+		<CleanFolders Include="Demo\obj" />
+		<CleanFolders Include="..\build" />
+	</ItemGroup>
+	<Target Name="Clean">
+		<RemoveDir Directories="@(CleanFolders)" />
+	</Target>
+	<Target Name="Compile">
+		<MSBuild
+			Projects="@(ProjectReferences)"
+			Properties="Configuration=Release" />
+		<Exec Command="&quot;$(VSINSTALLDIR)\Common7\IDE\devenv&quot; DemoSetup\DemoSetup.vdproj /Build SetupOnly"/>
+	</Target>
+	<Target Name="Package">
+		<MakeDir Directories="$(PackageOutputFolder)" />
+		<CreateItem Include="EmbeddedResourcePathProvider\bin\Release\*.dll;EmbeddedResourcePathProvider\bin\Release\*.xml;DemoSetup\Release\*.msi;readme.txt">
+			<Output TaskParameter="Include" ItemName="PackageInput" />
+		</CreateItem>
+		<Copy SourceFiles="@(PackageInput)" DestinationFolder="$(PackageOutputFolder)" />
+		<CreateItem Include="$(PackageOutputFolder)\*.*" Exclude="$(PackageOutputFolder)\*.zip">
+			<Output TaskParameter="Include" ItemName="PackageCompiled" />
+		</CreateItem>
+		<Zip Files="@(PackageCompiled)" WorkingDirectory="$(PackageOutputFolder)" ZipFileName="$(PackageOutputFolder)\Paraesthesia.Web.Hosting.EmbeddedResourcePathProvider.zip" />
+		<CreateItem Include="**\*.*" Exclude="**\_svn\**\*.*;**\bin\**\*.*;**\obj\**\*.*;**\Release\**\*.*;**\Debug\**\*.*;**\*.user;**\*.suo">
+			<Output TaskParameter="Include" ItemName="PackageSource" />
+		</CreateItem>
+		<Zip Files="@(PackageSource)" ZipFileName="$(PackageOutputFolder)\Paraesthesia.Web.Hosting.EmbeddedResourcePathProvider_Source.zip" />
+		<CreateItem Include="$(PackageOutputFolder)\*.*" Exclude="$(PackageOutputFolder)\*.zip">
+			<Output TaskParameter="Include" ItemName="PackageCleanup" />
+		</CreateItem>
+		<Delete Files="@(PackageCleanup)" />
+	</Target>
+</Project>
